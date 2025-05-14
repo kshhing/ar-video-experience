@@ -1,142 +1,402 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AR Poster Video</title>
-  <!-- MindAR + Three.js -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
-  <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-    body { font-family: Arial, sans-serif; }
-    #ar-container { width:100%; height:100%; position:absolute; top:0; left:0; }
-    #start-ar {
-      position:absolute; top:50%; left:50%; transform: translate(-50%,-50%);
-      padding:20px 40px; font-size:28px; background:#3498db; color:#fff;
-      border:none; border-radius:10px; cursor:pointer; z-index:1000;
-    }
-    #scanning-msg, #found-msg, #unmute-btn, #error-msg {
-      position:fixed; left:50%; transform:translateX(-50%); text-align:center;
-      padding:15px 25px; font-size:24px; color:#fff; border-radius:8px;
-      display:none; z-index:1000;
-    }
-    #scanning-msg { bottom:40px; background:rgba(0,0,0,0.7); }
-    #found-msg  { top:40px; background:rgba(40,167,69,0.9); }
-    #unmute-btn { bottom:100px; background:#4CAF50; }
-    #error-msg  { top:50%; transform:translate(-50%,-50%); background:rgba(220,53,69,0.9); }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poster Video Player</title>
+    <script id="mindar-script" src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+    <script id="threejs-script" src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #333; /* Added a fallback background */
+        }
+        
+        #ar-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        /* Loading and camera access screen */
+        #status-screen { /* Renamed from #loading for clarity */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #status-screen h2 {
+            font-size: clamp(24px, 5vw, 36px); /* Responsive font size */
+            margin-bottom: 20px;
+        }
+        
+        #status-screen p {
+            font-size: clamp(18px, 4vw, 28px); /* Responsive font size */
+            margin: 15px 0;
+            max-width: 80%;
+        }
+        
+        .spinner {
+            border: 10px solid #f3f3f3; /* Adjusted border */
+            border-top: 10px solid #3498db; /* Adjusted border */
+            border-radius: 50%;
+            width: 80px; /* Adjusted size */
+            height: 80px; /* Adjusted size */
+            animation: spin 1s linear infinite;
+            margin-bottom: 30px; /* Adjusted margin */
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Simple scanning guidance */
+        #scanning-message {
+            position: fixed;
+            bottom: 20px; /* Adjusted position */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px; /* Adjusted padding */
+            font-size: clamp(16px, 3.5vw, 20px); /* Responsive font size */
+            text-align: center;
+            z-index: 100;
+            border-radius: 10px;
+            display: none; /* Initially hidden */
+        }
+        
+        /* Success message */
+        #found-message {
+            position: fixed;
+            top: 20px; /* Adjusted position */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background-color: rgba(40, 167, 69, 0.9);
+            color: white;
+            padding: 15px; /* Adjusted padding */
+            font-size: clamp(16px, 3.5vw, 20px); /* Responsive font size */
+            text-align: center;
+            z-index: 100;
+            border-radius: 10px;
+            display: none; /* Initially hidden */
+        }
+        
+        /* Error message display */
+        #error-message-container { /* Renamed for clarity */
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(220, 53, 69, 0.95);
+            color: white;
+            padding: 20px; /* Adjusted padding */
+            border-radius: 10px; /* Adjusted border-radius */
+            font-size: clamp(16px, 3.5vw, 20px); /* Responsive font size */
+            text-align: center;
+            z-index: 1001;
+            max-width: 90%;
+            width: auto; /* Fit content */
+            display: none; /* Initially hidden */
+        }
+         #error-message-container button {
+            padding: 10px 20px; /* Adjusted padding */
+            background: #007bff; /* Changed color */
+            color: white;
+            border: none;
+            border-radius: 8px; /* Adjusted border-radius */
+            font-size: clamp(15px, 3vw, 18px); /* Responsive font size */
+            margin-top: 15px; /* Adjusted margin */
+            cursor: pointer;
+        }
+        
+        /* Sound control button */
+        #unmute-btn {
+            position: fixed;
+            bottom: 90px; /* Adjusted position */
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px; /* Adjusted padding */
+            background-color: #28a745; /* Changed color */
+            color: white;
+            border: none;
+            border-radius: 10px; /* Adjusted border-radius */
+            font-size: clamp(16px, 3.5vw, 22px); /* Responsive font size */
+            z-index: 1002;
+            display: none; /* Initially hidden */
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
 </head>
 <body>
-  <div id="ar-container"></div>
-  <button id="start-ar">Tap to Start AR</button>
-  <div id="scanning-msg">Point your camera at the poster</div>
-  <div id="found-msg">Video is playing</div>
-  <button id="unmute-btn">Tap for sound</button>
-  <div id="error-msg"></div>
+    <div id="ar-container"></div>
+    
+    <div id="status-screen">
+        <div id="spinner" class="spinner"></div>
+        <h2 id="status-title">Initializing AR</h2>
+        <p id="status-message">Please wait while we prepare the experience...</p>
+    </div>
+    
+    <div id="scanning-message">Point your camera at the poster</div>
+    <div id="found-message">Target found! Playing video...</div>
+    
+    <div id="error-message-container"></div>
+    
+    <button id="unmute-btn">Tap for Sound</button>
+    
+    <script>
+        // DOM Elements
+        const arContainer = document.getElementById('ar-container');
+        const statusScreen = document.getElementById('status-screen');
+        const spinner = document.getElementById('spinner');
+        const statusTitle = document.getElementById('status-title');
+        const statusMessage = document.getElementById('status-message');
+        const scanningMessage = document.getElementById('scanning-message');
+        const foundMessage = document.getElementById('found-message');
+        const unmuteBtn = document.getElementById('unmute-btn');
+        const errorMessageContainer = document.getElementById('error-message-container');
 
-  <script>
-    const startButton = document.getElementById("start-ar");
-    const scanningMsg = document.getElementById("scanning-msg");
-    const foundMsg = document.getElementById("found-msg");
-    const unmuteBtn = document.getElementById("unmute-btn");
-    const errorMsg = document.getElementById("error-msg");
+        // Configuration
+        // IMPORTANT: Replace with the correct path to your targets.mind file on your GitHub Pages.
+        // If your HTML is at https://kshhing.github.io/ar-video-experience/ and targets.mind is in the same folder,
+        // then "targets.mind" or "./targets.mind" is correct.
+        const imageTargetSrc = "targets.mind"; 
 
-    function showError(msg) {
-      errorMsg.innerHTML = `<p>${msg}</p><button onclick="location.reload()" style="margin-top:15px;padding:10px 20px;font-size:20px;border:none;border-radius:8px;background:#007bff;color:#fff;">Retry</button>`;
-      errorMsg.style.display = 'block';
-    }
+        // IMPORTANT: Replace with the correct path to your video file on your GitHub Pages.
+        // e.g., "https://kshhing.github.io/ar-video-experience/my_video.mp4"
+        // Make sure this video file exists at the specified path in your GitHub repository.
+        const videoSrc = "your-video.mp4"; 
 
-    function checkLibraries() {
-      return (typeof window.MINDAR !== 'undefined' || typeof window.MindARThree !== 'undefined');
-    }
+        // Show a general status or error message on the main status screen
+        function showStatus(title, message, showSpinner = true) {
+            console.log(`Status Update: ${title} - ${message}`);
+            statusTitle.textContent = title;
+            statusMessage.innerHTML = message; // Use innerHTML for potential links/buttons
+            spinner.style.display = showSpinner ? 'block' : 'none';
+            statusScreen.style.display = 'flex';
+            errorMessageContainer.style.display = 'none'; // Hide specific error pop-up
+        }
 
-    startButton.addEventListener("click", async () => {
-      startButton.style.display = 'none';
+        // Show a more prominent error message (pop-up style)
+        function showErrorPopup(message, showRetryButton = true) {
+            console.error(`Error Popup: ${message}`);
+            let content = `<p>${message}</p>`;
+            if (showRetryButton) {
+                content += `<button onclick="location.reload()">Try Again</button>`;
+            }
+            errorMessageContainer.innerHTML = content;
+            errorMessageContainer.style.display = 'block';
+            statusScreen.style.display = 'none'; // Hide main status screen
+            scanningMessage.style.display = 'none';
+            foundMessage.style.display = 'none';
+        }
+        
+        // Function to start the AR experience
+        function startAR() {
+            try {
+                console.log("Attempting to start AR...");
+                // Ensure MindARThree is available (already checked by ensureLibrariesLoaded, but good for safety)
+                if (typeof window.MindARThree === 'undefined') {
+                    showErrorPopup("Critical Error: MindARThree library is not available even after waiting. Cannot start AR.", true);
+                    return;
+                }
+                console.log("MindARThree library confirmed.");
 
-      if (!checkLibraries()) {
-        showError("AR libraries not loaded. Please check your internet connection.");
-        return;
-      }
+                const mindarThree = new window.MindARThree({
+                    container: arContainer,
+                    imageTargetSrc: imageTargetSrc,
+                    uiScanning: "no", 
+                    uiLoading: "no",  
+                    maxTrack: 1
+                });
+                
+                const {renderer, scene, camera} = mindarThree;
+                console.log("MindARThree instance created.");
+                
+                const video = document.createElement("video");
+                video.src = videoSrc;
+                video.muted = true; 
+                video.preload = "auto";
+                video.playsInline = true; 
+                video.loop = true;
+                
+                video.onerror = function() {
+                    const errorDetail = video.error ? video.error.message : "Unknown video error";
+                    console.error("Error loading video:", videoSrc, errorDetail);
+                    showErrorPopup(`Failed to load video: ${videoSrc}. Check path and format. Error: ${errorDetail}`, true);
+                };
+                video.onloadeddata = function() {
+                    console.log("Video data loaded successfully:", videoSrc);
+                };
+                video.load(); 
+                console.log("Video element created and load initiated for:", videoSrc);
+                
+                const texture = new THREE.VideoTexture(video);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.format = THREE.RGBFormat; 
 
-      const mindarThree = new window.MindARThree({
-        container: document.querySelector("#ar-container"),
-        imageTargetSrc: "targets.mind",
-        uiScanning: false,
-        uiLoading: false
-      });
+                const geometry = new THREE.PlaneGeometry(1, 1); 
+                const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 1.0 });
+                const plane = new THREE.Mesh(geometry, material);
+                console.log("Three.js video texture and plane created.");
+                
+                const anchor = mindarThree.addAnchor(0);
+                anchor.group.add(plane);
+                console.log("MindAR anchor created and plane added.");
+                
+                video.addEventListener('loadedmetadata', () => {
+                    console.log("Video metadata loaded. Adjusting plane aspect ratio.");
+                    // Ensure video dimensions are valid before calculating aspect ratio
+                    if (video.videoHeight > 0 && video.videoWidth > 0) {
+                        plane.scale.set(1, video.videoHeight / video.videoWidth, 1);
+                    } else {
+                        console.warn("Video dimensions are zero, cannot set aspect ratio yet.");
+                    }
+                });
+                
+                anchor.onTargetFound = () => {
+                    console.log("Target found!");
+                    scanningMessage.style.display = "none";
+                    foundMessage.style.display = "block";
+                    video.play().then(() => {
+                        console.log("Video playback started.");
+                        if (video.muted) { 
+                           unmuteBtn.style.display = "block";
+                           console.log("Video is muted, showing unmute button.");
+                        }
+                    }).catch(e => {
+                        console.warn("Video autoplay with sound likely prevented:", e);
+                        video.muted = true; 
+                        video.play().then(() => {
+                            unmuteBtn.style.display = "block"; 
+                            console.log("Video playback started (muted), showing unmute button.");
+                        }).catch(err => {
+                             console.error("Video play error even when muted:", err);
+                             showErrorPopup("Could not play video. Please check browser permissions or try again.", false);
+                        });
+                    });
+                    setTimeout(() => { foundMessage.style.display = "none"; }, 3000);
+                };
+                
+                anchor.onTargetLost = () => {
+                    console.log("Target lost.");
+                    scanningMessage.style.display = "block";
+                    foundMessage.style.display = "none";
+                    unmuteBtn.style.display = "none";
+                    video.pause();
+                    console.log("Video paused.");
+                };
 
-      const { renderer, scene, camera } = mindarThree;
+                unmuteBtn.addEventListener('click', () => {
+                    video.muted = false;
+                    unmuteBtn.style.display = "none";
+                    console.log("Video unmuted by user.");
+                });
+                
+                console.log("Starting MindAR engine...");
+                mindarThree.start()
+                    .then(() => {
+                        console.log("MindAR engine started successfully.");
+                        statusScreen.style.display = "none"; 
+                        scanningMessage.style.display = "block"; 
+                        renderer.setAnimationLoop(() => { 
+                            renderer.render(scene, camera);
+                        });
+                    })
+                    .catch(err => {
+                        console.error("AR start error:", err.name, err.message);
+                        statusScreen.style.display = 'none'; 
+                        if (err.name === 'NotAllowedError' || err.message.includes('Permission denied')) {
+                            showErrorPopup("Camera access denied. Please allow camera access in your browser settings and reload the page.", true);
+                        } else if (err.message.includes('Requested device not found') || err.message.includes('No camera found') || err.name === 'NotFoundError') {
+                            showErrorPopup("No camera found. Please ensure a camera is connected, enabled, and not in use by another application.", true);
+                        } else {
+                            showErrorPopup(`Failed to start AR: ${err.message}. Please try again.`, true);
+                        }
+                    });
 
-      const video = document.createElement("video");
-      video.src = "ar-video-experience/your-video.mp4";
-      video.muted = true;
-      video.playsInline = true;
-      video.loop = true;
-      video.preload = "auto";
-      video.load();
+                window.addEventListener("resize", () => {
+                    console.log("Window resized. Adjusting AR scene.");
+                    mindarThree.resize(); 
+                });
+                
+            } catch (err) {
+                console.error("General AR initialization error:", err);
+                statusScreen.style.display = 'none';
+                showErrorPopup(`An unexpected error occurred during AR setup: ${err.message}. Please try refreshing.`, true);
+            }
+        }
 
-      video.onerror = () => {
-        showError("Error loading video. Ensure 'ar-video-experience/your-video.mp4' is uploaded to your GitHub repo.");
-      };
+        // Function to check if necessary libraries are loaded
+        function ensureLibrariesLoaded(callback, attempts = 0) {
+            const maxAttempts = 100; // Try for 10 seconds (100 * 100ms)
+            const mindarScriptTag = document.getElementById('mindar-script');
+            const threeScriptTag = document.getElementById('threejs-script');
 
-      const texture = new THREE.VideoTexture(video);
-      const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
-      const geometry = new THREE.PlaneGeometry(1, 1);
-      const plane = new THREE.Mesh(geometry, material);
+            if (!mindarScriptTag) {
+                console.error("MindAR script tag not found in HTML.");
+                showStatus("Initialization Error", "Critical: MindAR script tag missing. Please check the HTML.", false);
+                return;
+            }
+            if (!threeScriptTag) {
+                console.error("Three.js script tag not found in HTML.");
+                showStatus("Initialization Error", "Critical: Three.js script tag missing. Please check the HTML.", false);
+                return;
+            }
 
-      const anchor = mindarThree.addAnchor(0);
-      anchor.group.add(plane);
+            const threeLoaded = typeof window.THREE !== 'undefined';
+            const mindarLoaded = typeof window.MindARThree !== 'undefined';
 
-      video.addEventListener('loadedmetadata', () => {
-        const aspect = video.videoHeight / video.videoWidth;
-        plane.geometry = new THREE.PlaneGeometry(1, aspect);
-      });
+            if (threeLoaded && mindarLoaded) {
+                console.log("Both Three.js and MindARThree libraries are loaded.");
+                callback();
+            } else if (attempts < maxAttempts) {
+                if (attempts % 10 === 0) { // Log status every second
+                    console.log(`Waiting for libraries... Attempt: ${attempts + 1}/${maxAttempts}. Three.js loaded: ${threeLoaded}, MindAR loaded: ${mindarLoaded}`);
+                }
+                setTimeout(() => ensureLibrariesLoaded(callback, attempts + 1), 100);
+            } else {
+                console.error("Timeout: Libraries not loaded after 10 seconds.");
+                let errorMsg = "AR libraries failed to load. ";
+                if (!threeLoaded) errorMsg += "Three.js is missing. ";
+                if (!mindarLoaded) errorMsg += "MindAR is missing. ";
+                errorMsg += "Please check your internet connection and <a href='javascript:location.reload()'>try again</a>.";
+                showStatus("Initialization Error", errorMsg, false);
+            }
+        }
 
-      anchor.onTargetFound = () => {
-        scanningMsg.style.display = "none";
-        foundMsg.style.display = "block";
-        video.play().then(() => {
-          unmuteBtn.style.display = 'block';
-        }).catch(() => {
-          video.muted = true;
-          video.play().then(() => {
-            unmuteBtn.style.display = 'block';
-          }).catch(() => {
-            showError("Video couldn't play. Try again.");
-          });
+        // Start the process when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM content loaded. Starting AR initialization process.");
+            showStatus("Initializing AR", "Loading AR components...", true);
+            ensureLibrariesLoaded(startAR);
         });
-        setTimeout(() => foundMsg.style.display = "none", 4000);
-      };
-
-      anchor.onTargetLost = () => {
-        scanningMsg.style.display = "block";
-        foundMsg.style.display = "none";
-        unmuteBtn.style.display = 'none';
-        video.pause();
-      };
-
-      unmuteBtn.onclick = () => {
-        video.muted = false;
-        unmuteBtn.style.display = 'none';
-      };
-
-      try {
-        await mindarThree.start();
-        scanningMsg.style.display = "block";
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
-      } catch (e) {
-        showError("Failed to start AR: " + e.message);
-      }
-
-      window.addEventListener("resize", () => {
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>
