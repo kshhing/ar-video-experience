@@ -1,293 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poster Video Player</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image-three.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            overflow: hidden;
-            font-family: Arial, sans-serif;
-        }
-        
-        #ar-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        
-        /* Loading and camera access screen */
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        #loading h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-        
-        #loading p {
-            font-size: 28px;
-            margin: 15px 0;
-            max-width: 80%;
-        }
-        
-        .spinner {
-            border: 16px solid #f3f3f3;
-            border-top: 16px solid #3498db;
-            border-radius: 50%;
-            width: 100px;
-            height: 100px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 40px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Simple scanning guidance */
-        #scanning-message {
-            position: fixed;
-            bottom: 80px;
-            left: 0;
-            width: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 25px;
-            font-size: 32px;
-            text-align: center;
-            z-index: 100;
-        }
-        
-        /* Success message */
-        #found-message {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            width: 100%;
-            background-color: rgba(40, 167, 69, 0.9);
-            color: white;
-            padding: 20px;
-            font-size: 28px;
-            text-align: center;
-            z-index: 100;
-            display: none;
-        }
-        
-        /* Error message */
-        #error-message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(220, 53, 69, 0.95);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            font-size: 26px;
-            text-align: center;
-            z-index: 1001;
-            max-width: 80%;
-            display: none;
-        }
-        
-        /* Sound control button */
-        #unmute-btn {
-            position: fixed;
-            bottom: 150px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 20px 40px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 15px;
-            font-size: 30px;
-            z-index: 1002;
-            display: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple AR Poster Experience</n>
+  <!-- Load libraries with defer to ensure DOM ready -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js" defer></script>
+  <style>
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+    body { font-family: Arial, sans-serif; background: #000; }
+    #ar-container { width:100%; height:100%; position: absolute; top:0; left:0; }
+    #start-btn {
+      position: absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+      padding: 20px 40px; font-size: 24px; background: #2196F3; color: #fff;
+      border: none; border-radius: 8px; cursor: pointer; z-index: 999;
+    }
+    #message {
+      position: absolute; bottom: 20px; left:50%; transform:translateX(-50%);
+      color: #fff; font-size: 20px; background: rgba(0,0,0,0.6);
+      padding: 10px 20px; border-radius: 6px; display: none;
+      z-index: 999;
+    }
+  </style>
 </head>
 <body>
-    <!-- Main AR container -->
-    <div id="ar-container"></div>
-    
-    <!-- Loading screen -->
-    <div id="loading">
-        <div class="spinner"></div>
-        <h2>Starting Camera...</h2>
-        <p>Please allow camera access</p>
-    </div>
-    
-    <!-- Simple scanning guidance -->
-    <div id="scanning-message">Point at the poster</div>
-    <div id="found-message">Video is now playing!</div>
-    
-    <!-- Error message -->
-    <div id="error-message"></div>
-    
-    <!-- Sound control -->
-    <button id="unmute-btn">Tap for sound</button>
-    
-    <script>
-        // Elements
-        const loading = document.getElementById('loading');
-        const scanningMessage = document.getElementById('scanning-message');
-        const foundMessage = document.getElementById('found-message');
-        const unmuteBtn = document.getElementById('unmute-btn');
-        const errorMessage = document.getElementById('error-message');
-        
-        // Show error message function
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-            
-            // Add a retry button
-            errorMessage.innerHTML = `
-                <p>${message}</p>
-                <button onclick="location.reload()" style="padding: 20px 30px; background: #4CAF50; color: white; border: none; border-radius: 15px; font-size: 28px; margin-top: 30px;">Try Again</button>
-            `;
-        }
-        
-        // Start AR immediately when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                // Create AR experience with MindAR
-                const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-                    container: document.querySelector("#ar-container"),
-                    imageTargetSrc: "target.mind", // Your trained image target file
-                    uiScanning: false, // Using custom UI
-                    uiLoading: false,  // Using custom loading UI
-                    maxTrack: 1
-                });
-                
-                const {renderer, scene, camera} = mindarThree;
-                
-                // Create a video element
-                const video = document.createElement("video");
-                video.src = "your-video.mp4"; // Replace with your actual video file
-                video.muted = true; // Start muted for autoplay policy
-                video.preload = "auto";
-                video.playsInline = true; // Essential for iOS
-                video.loop = true; // Loop the video playback
-                video.load();
-                
-                // Create video texture
-                const texture = new THREE.VideoTexture(video);
-                texture.minFilter = THREE.LinearFilter;
-                texture.magFilter = THREE.LinearFilter;
-                
-                // Create plane for video
-                const geometry = new THREE.PlaneGeometry(1, 1); // Default 1:1 ratio
-                const material = new THREE.MeshBasicMaterial({ 
-                    map: texture,
-                    transparent: true
-                });
-                const plane = new THREE.Mesh(geometry, material);
-                
-                // Add plane to anchor
-                const anchor = mindarThree.addAnchor(0);
-                anchor.group.add(plane);
-                
-                // When video metadata loads, adjust to correct aspect ratio
-                video.addEventListener('loadedmetadata', function() {
-                    const aspectRatio = video.videoHeight / video.videoWidth;
-                    plane.geometry = new THREE.PlaneGeometry(1, aspectRatio);
-                });
-                
-                // When the target image is found
-                anchor.onTargetFound = function() {
-                    scanningMessage.style.display = "none";
-                    foundMessage.style.display = "block";
-                    
-                    // Try to play video
-                    video.play().catch(function(e) {
-                        console.error("Video autoplay error:", e);
-                        // Try with muted for autoplay policy
-                        video.muted = true;
-                        video.play().then(function() {
-                            // Show unmute button
-                            unmuteBtn.style.display = "block";
-                            
-                            unmuteBtn.onclick = function() {
-                                video.muted = false;
-                                this.style.display = "none";
-                            };
-                        }).catch(function(err) {
-                            showError("Cannot play video. Please try again.");
-                        });
-                    });
-                    
-                    // Hide success message after a few seconds
-                    setTimeout(() => {
-                        foundMessage.style.display = "none";
-                    }, 5000);
-                };
-                
-                // When target image is lost
-                anchor.onTargetLost = function() {
-                    scanningMessage.style.display = "block";
-                    foundMessage.style.display = "none";
-                    unmuteBtn.style.display = "none";
-                    video.pause();
-                };
-                
-                // Start AR
-                mindarThree.start()
-                    .then(() => {
-                        loading.style.display = "none";
-                        scanningMessage.style.display = "block";
-                    })
-                    .catch((err) => {
-                        console.error("AR start error:", err);
-                        loading.style.display = "none";
-                        
-                        // Determine if it's a permissions issue
-                        if (err.name === 'NotAllowedError') {
-                            showError("Camera access denied. Please allow camera access and try again.");
-                        } else {
-                            showError("Camera not available. Please try again or use a different device.");
-                        }
-                    });
-                
-                // Handle window resize
-                window.addEventListener("resize", function() {
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
-                });
-                
-            } catch (err) {
-                console.error("AR initialization error:", err);
-                loading.style.display = "none";
-                showError("Something went wrong. Please try again or use a different browser.");
-            }
+  <div id="ar-container"></div>
+  <button id="start-btn">Start AR</button>
+  <div id="message"></div>
+
+  <script defer>
+    // Steps from user's perspective:
+    // 1. Read poster message
+    // 2. Tap "Start AR"
+    // 3. Point camera at poster -> video plays
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const startBtn = document.getElementById('start-btn');
+      const message = document.getElementById('message');
+      const container = document.getElementById('ar-container');
+
+      function showMessage(text) {
+        message.textContent = text;
+        message.style.display = 'block';
+      }
+
+      function hideMessage() {
+        message.style.display = 'none';
+      }
+
+      startBtn.addEventListener('click', async () => {
+        startBtn.style.display = 'none';
+        showMessage('Loading AR...');
+
+        // Initialize MindAR
+        const mindAR = new MindAR.IMAGE.MindARThree({
+          container,
+          imageTargetSrc: 'targets.mind',
+          uiScanning: false,
+          uiLoading: false,
+          maxTrack: 1
         });
-    </script>
+        const { renderer, scene, camera } = mindAR;
+
+        // Create video element
+        const video = document.createElement('video');
+        video.src = 'your-video.mp4'; // ensure file at this path
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        document.body.appendChild(video); // needed for some browsers
+
+        // Create video texture and mesh
+        const texture = new THREE.VideoTexture(video);
+        const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+
+        // Anchor the plane to the target
+        const anchor = mindAR.addAnchor(0);
+        anchor.group.add(plane);
+
+        // Adjust aspect ratio
+        video.addEventListener('loadedmetadata', () => {
+          const aspect = video.videoHeight / video.videoWidth;
+          plane.geometry = new THREE.PlaneGeometry(1, aspect);
+        });
+
+        anchor.onTargetFound = () => {
+          hideMessage();
+          video.play().then(() => showMessage('🔊 Tap screen to unmute')).catch(() => showMessage('Video play failed.'));
+        };
+        anchor.onTargetLost = () => {
+          showMessage('Point camera at poster');
+          video.pause();
+        };
+
+        // Unmute on tap
+        container.addEventListener('click', () => {
+          if (video.muted) { video.muted = false; showMessage('Unmuted'); }
+        });
+
+        try {
+          await mindAR.start();
+          showMessage('Point camera at poster');
+          renderer.setAnimationLoop(() => renderer.render(scene, camera));
+        } catch (e) {
+          showMessage('AR start failed: ' + e.message);
+        }
+
+        window.addEventListener('resize', () => {
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+        });
+      });
+    });
+  </script>
 </body>
 </html>
