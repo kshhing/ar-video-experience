@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple AR Video Player</title>
+    <title>Simple AR Video Player for Seniors</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image-three.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
@@ -26,6 +26,48 @@
             left: 0;
         }
         
+        /* Starting screen with big instructions */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #start-button {
+            margin-top: 40px;
+            padding: 25px 50px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 32px;
+            cursor: pointer;
+        }
+        
+        #start-screen h1 {
+            font-size: 36px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        #start-screen p {
+            font-size: 28px;
+            margin: 15px 0;
+            max-width: 80%;
+            color: #555;
+        }
+        
+        /* Loading and camera access screen */
         #loading {
             position: fixed;
             top: 0;
@@ -34,7 +76,7 @@
             height: 100%;
             background-color: rgba(0, 0, 0, 0.9);
             color: white;
-            display: flex;
+            display: none; /* Initially hidden */
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -44,24 +86,24 @@
         }
         
         #loading h2 {
-            font-size: 28px;
-            margin-bottom: 15px;
+            font-size: 32px;
+            margin-bottom: 20px;
         }
         
         #loading p {
-            font-size: 22px;
-            margin: 10px 0;
+            font-size: 26px;
+            margin: 15px 0;
             max-width: 80%;
         }
         
         .spinner {
-            border: 12px solid #f3f3f3;
-            border-top: 12px solid #3498db;
+            border: 16px solid #f3f3f3;
+            border-top: 16px solid #3498db;
             border-radius: 50%;
-            width: 80px;
-            height: 80px;
+            width: 100px;
+            height: 100px;
             animation: spin 1s linear infinite;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
         
         @keyframes spin {
@@ -69,32 +111,51 @@
             100% { transform: rotate(360deg); }
         }
         
+        /* Scanning guidance */
         #scanning-message {
             position: fixed;
-            bottom: 40px;
+            bottom: 60px;
+            left: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 25px;
+            font-size: 30px;
+            text-align: center;
+            z-index: 100;
+            display: none; /* Initially hidden */
+        }
+        
+        #scanning-instructions {
+            position: fixed;
+            top: 60px;
             left: 0;
             width: 100%;
             background-color: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 20px;
-            font-size: 24px;
+            font-size: 26px;
             text-align: center;
             z-index: 100;
+            display: none; /* Initially hidden */
         }
         
-        #scanning-instructions {
+        /* Success message */
+        #found-message {
             position: fixed;
-            top: 40px;
+            top: 60px;
             left: 0;
             width: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: rgba(40, 167, 69, 0.9);
             color: white;
-            padding: 15px;
-            font-size: 20px;
+            padding: 20px;
+            font-size: 28px;
             text-align: center;
             z-index: 100;
+            display: none;
         }
         
+        /* Error message */
         #error-message {
             position: fixed;
             top: 50%;
@@ -102,64 +163,144 @@
             transform: translate(-50%, -50%);
             background-color: rgba(220, 53, 69, 0.95);
             color: white;
-            padding: 20px;
-            border-radius: 10px;
-            font-size: 22px;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 26px;
             text-align: center;
             z-index: 1001;
             max-width: 80%;
             display: none;
         }
         
-        #found-message {
-            position: fixed;
-            top: 40px;
-            left: 0;
-            width: 100%;
-            background-color: rgba(40, 167, 69, 0.9);
-            color: white;
-            padding: 15px;
-            font-size: 22px;
-            text-align: center;
-            z-index: 100;
-            display: none;
-        }
-        
+        /* Sound control button */
         #unmute-btn {
             position: fixed;
-            bottom: 100px;
+            bottom: 120px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 15px 25px;
+            padding: 20px 30px;
             background-color: #4CAF50;
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 22px;
+            border-radius: 15px;
+            font-size: 28px;
             z-index: 1002;
             display: none;
+        }
+        
+        /* Help button */
+        #help-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 70px;
+            height: 70px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 36px;
+            z-index: 1003;
+            display: none;
+        }
+        
+        /* Help panel */
+        #help-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            color: black;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2001;
+            text-align: center;
+            padding: 30px;
+        }
+        
+        #help-panel h2 {
+            font-size: 36px;
+            margin-bottom: 30px;
+        }
+        
+        #help-panel p {
+            font-size: 28px;
+            margin: 15px 0;
+            max-width: 80%;
+        }
+        
+        #close-help {
+            margin-top: 40px;
+            padding: 20px 40px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 28px;
         }
     </style>
 </head>
 <body>
+    <!-- Main AR container -->
     <div id="ar-container"></div>
     
+    <!-- Start screen with instructions -->
+    <div id="start-screen">
+        <h1>Photo Video Player</h1>
+        <p>This app plays videos from your special photos</p>
+        <p>You'll need to point your camera at the photo</p>
+        <p>The video will appear on top of the photo</p>
+        <button id="start-button">Start Camera</button>
+    </div>
+    
+    <!-- Loading screen -->
     <div id="loading">
         <div class="spinner"></div>
         <h2>Starting Camera...</h2>
         <p>Please allow camera access when prompted</p>
-        <p>This app will play a video when you point your camera at the specific image</p>
+        <p>This may take a few moments</p>
     </div>
     
+    <!-- Scanning guidance -->
     <div id="scanning-message">Point your camera at the photo</div>
-    <div id="scanning-instructions">Hold the camera steady about 8-12 inches from the photo</div>
-    <div id="found-message">Image found! Video is playing</div>
+    <div id="scanning-instructions">Hold your device steady about 8-12 inches from the photo</div>
+    <div id="found-message">Video is now playing!</div>
     
+    <!-- Error message -->
     <div id="error-message"></div>
     
+    <!-- Sound control -->
     <button id="unmute-btn">Tap here for sound</button>
     
+    <!-- Help button and panel -->
+    <button id="help-btn">?</button>
+    <div id="help-panel">
+        <h2>Help Guide</h2>
+        <p>1. Point your camera at the special photo</p>
+        <p>2. Hold your device steady about 8-12 inches away</p>
+        <p>3. The video will appear over the photo</p>
+        <p>4. If you move away from the photo, the video will disappear</p>
+        <p>5. To hear sound, tap the green "Tap here for sound" button</p>
+        <button id="close-help">Got it</button>
+    </div>
+    
     <script>
+        // Elements
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const loading = document.getElementById('loading');
+        const scanningMessage = document.getElementById('scanning-message');
+        const scanningInstructions = document.getElementById('scanning-instructions');
+        const foundMessage = document.getElementById('found-message');
+        const unmuteBtn = document.getElementById('unmute-btn');
+        const helpBtn = document.getElementById('help-btn');
+        const helpPanel = document.getElementById('help-panel');
+        const closeHelp = document.getElementById('close-help');
+        
         // Show error message function
         function showError(message) {
             const errorElement = document.getElementById('error-message');
@@ -167,70 +308,81 @@
             errorElement.style.display = 'block';
             setTimeout(() => {
                 errorElement.style.display = 'none';
-            }, 8000);
+            }, 10000); // Show for 10 seconds for seniors to read
         }
         
-        // Start AR automatically when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize MindAR
-            const loading = document.getElementById('loading');
-            const scanningMessage = document.getElementById('scanning-message');
-            const scanningInstructions = document.getElementById('scanning-instructions');
-            const foundMessage = document.getElementById('found-message');
-            const unmuteBtn = document.getElementById('unmute-btn');
+        // Help button functionality
+        helpBtn.addEventListener('click', function() {
+            helpPanel.style.display = 'flex';
+        });
+        
+        closeHelp.addEventListener('click', function() {
+            helpPanel.style.display = 'none';
+        });
+        
+        // Start AR when user clicks the start button
+        startButton.addEventListener('click', function() {
+            startScreen.style.display = 'none';
+            loading.style.display = 'flex';
             
+            // Initialize AR experience
+            startAR();
+        });
+        
+        function startAR() {
             try {
-                // Create AR experience
+                // Create AR experience with MindAR
                 const mindarThree = new window.MINDAR.IMAGE.MindARThree({
                     container: document.querySelector("#ar-container"),
-                    imageTargetSrc: "target.mind", // This is your trained image target file
-                    uiScanning: false, // We'll use our own scanning UI
-                    uiLoading: false,  // We'll use our own loading UI
+                    imageTargetSrc: "target.mind", // Your trained image target file
+                    uiScanning: false, // Using custom UI
+                    uiLoading: false,  // Using custom loading UI
                     maxTrack: 1
                 });
                 
                 const {renderer, scene, camera} = mindarThree;
                 
-                // Create a video element for our overlay
+                // Create a video element
                 const video = document.createElement("video");
-                video.src = "your-video.mp4"; // Replace with your video file
-                video.muted = true; // Start muted to handle autoplay restrictions
+                video.src = "your-video.mp4"; // Replace with your actual video file
+                video.muted = true; // Start muted for autoplay policy
                 video.preload = "auto";
-                video.playsInline = true; // Important for iOS
-                video.loop = true; // Loop the video
+                video.playsInline = true; // Essential for iOS
+                video.loop = true; // Loop the video playback
                 video.load();
                 
-                // Setup texture for the video
+                // Create video texture
                 const texture = new THREE.VideoTexture(video);
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
                 
-                // Create a plane geometry for the video
-                const geometry = new THREE.PlaneGeometry(1, 1);
+                // Create plane for video
+                const geometry = new THREE.PlaneGeometry(1, 1); // Default 1:1 ratio
                 const material = new THREE.MeshBasicMaterial({ 
                     map: texture,
                     transparent: true
                 });
                 const plane = new THREE.Mesh(geometry, material);
                 
-                // Add the plane to an anchor
+                // Add plane to anchor
                 const anchor = mindarThree.addAnchor(0);
                 anchor.group.add(plane);
                 
-                // When video metadata is loaded, update the geometry to match video aspect ratio
+                // When video metadata loads, adjust to correct aspect ratio
                 video.addEventListener('loadedmetadata', function() {
                     const aspectRatio = video.videoHeight / video.videoWidth;
                     plane.geometry = new THREE.PlaneGeometry(1, aspectRatio);
                 });
                 
-                // When target image is found, play the video
+                // When the target image is found
                 anchor.onTargetFound = function() {
                     scanningMessage.style.display = "none";
                     scanningInstructions.style.display = "none";
                     foundMessage.style.display = "block";
                     
+                    // Try to play video
                     video.play().catch(function(e) {
-                        console.error("Video play error:", e);
+                        console.error("Video autoplay error:", e);
                         // Try with muted for autoplay policy
                         video.muted = true;
                         video.play().then(function() {
@@ -242,17 +394,17 @@
                                 this.style.display = "none";
                             };
                         }).catch(function(err) {
-                            showError("Video playback issue. Please try reloading the page.");
+                            showError("Cannot play video. Please try reloading the app.");
                         });
                     });
                     
-                    // Hide the found message after a few seconds
+                    // Hide success message after a few seconds
                     setTimeout(() => {
                         foundMessage.style.display = "none";
-                    }, 5000);
+                    }, 6000); // Display for 6 seconds so seniors have time to read
                 };
                 
-                // When target image is lost, stop the video
+                // When target image is lost
                 anchor.onTargetLost = function() {
                     scanningMessage.style.display = "block";
                     scanningInstructions.style.display = "block";
@@ -265,15 +417,23 @@
                 mindarThree.start()
                     .then(() => {
                         loading.style.display = "none";
+                        scanningMessage.style.display = "block";
+                        scanningInstructions.style.display = "block";
+                        helpBtn.style.display = "block";
                     })
                     .catch((err) => {
                         console.error("AR start error:", err);
-                        loading.innerHTML = `
-                            <h2>Camera Error</h2>
-                            <p>${err.message || "Failed to start camera"}</p>
-                            <p>Please make sure you've allowed camera access</p>
-                            <button onclick="location.reload()" style="padding: 15px 25px; background: #4CAF50; color: white; border: none; border-radius: 10px; font-size: 22px; margin-top: 20px;">Try Again</button>
+                        loading.style.display = "none";
+                        showError("Camera not available. Please check camera permissions and try again.");
+                        
+                        // Show restart button
+                        const errorMsg = document.getElementById('error-message');
+                        errorMsg.innerHTML = `
+                            <p>Camera not available.</p>
+                            <p>Please check camera permissions and try again.</p>
+                            <button onclick="location.reload()" style="padding: 20px 30px; background: #4CAF50; color: white; border: none; border-radius: 15px; font-size: 26px; margin-top: 30px;">Try Again</button>
                         `;
+                        errorMsg.style.display = 'block';
                     });
                 
                 // Handle window resize
@@ -285,14 +445,18 @@
                 
             } catch (err) {
                 console.error("AR initialization error:", err);
-                loading.innerHTML = `
-                    <h2>Error</h2>
-                    <p>${err.message || "Failed to initialize AR"}</p>
-                    <p>Please try reloading the page or use a different device</p>
-                    <button onclick="location.reload()" style="padding: 15px 25px; background: #4CAF50; color: white; border: none; border-radius: 10px; font-size: 22px; margin-top: 20px;">Try Again</button>
+                loading.style.display = "none";
+                
+                // Show error with restart button
+                const errorMsg = document.getElementById('error-message');
+                errorMsg.innerHTML = `
+                    <p>Something went wrong.</p>
+                    <p>Please try again or use a different device.</p>
+                    <button onclick="location.reload()" style="padding: 20px 30px; background: #4CAF50; color: white; border: none; border-radius: 15px; font-size: 26px; margin-top: 30px;">Try Again</button>
                 `;
+                errorMsg.style.display = 'block';
             }
-        });
+        }
     </script>
 </body>
 </html>
