@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poster Video Player</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mind-ar/1.2.2/mindar-image-three.prod.js"></script>
+    <!-- Updated script loading with specific versions -->
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-three.prod.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
     <style>
         body {
@@ -174,119 +175,140 @@
             `;
         }
         
-        // Start AR immediately when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                // Create AR experience with MindAR
-                const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-                    container: document.querySelector("#ar-container"),
-                    imageTargetSrc: "target.mind", // Your trained image target file
-                    uiScanning: false, // Using custom UI
-                    uiLoading: false,  // Using custom loading UI
-                    maxTrack: 1
-                });
-                
-                const {renderer, scene, camera} = mindarThree;
-                
-                // Create a video element
-                const video = document.createElement("video");
-                video.src = "your-video.mp4"; // Replace with your actual video file
-                video.muted = true; // Start muted for autoplay policy
-                video.preload = "auto";
-                video.playsInline = true; // Essential for iOS
-                video.loop = true; // Loop the video playback
-                video.load();
-                
-                // Create video texture
-                const texture = new THREE.VideoTexture(video);
-                texture.minFilter = THREE.LinearFilter;
-                texture.magFilter = THREE.LinearFilter;
-                
-                // Create plane for video
-                const geometry = new THREE.PlaneGeometry(1, 1); // Default 1:1 ratio
-                const material = new THREE.MeshBasicMaterial({ 
-                    map: texture,
-                    transparent: true
-                });
-                const plane = new THREE.Mesh(geometry, material);
-                
-                // Add plane to anchor
-                const anchor = mindarThree.addAnchor(0);
-                anchor.group.add(plane);
-                
-                // When video metadata loads, adjust to correct aspect ratio
-                video.addEventListener('loadedmetadata', function() {
-                    const aspectRatio = video.videoHeight / video.videoWidth;
-                    plane.geometry = new THREE.PlaneGeometry(1, aspectRatio);
-                });
-                
-                // When the target image is found
-                anchor.onTargetFound = function() {
-                    scanningMessage.style.display = "none";
-                    foundMessage.style.display = "block";
-                    
-                    // Try to play video
-                    video.play().catch(function(e) {
-                        console.error("Video autoplay error:", e);
-                        // Try with muted for autoplay policy
-                        video.muted = true;
-                        video.play().then(function() {
-                            // Show unmute button
-                            unmuteBtn.style.display = "block";
-                            
-                            unmuteBtn.onclick = function() {
-                                video.muted = false;
-                                this.style.display = "none";
-                            };
-                        }).catch(function(err) {
-                            showError("Cannot play video. Please try again.");
-                        });
-                    });
-                    
-                    // Hide success message after a few seconds
-                    setTimeout(() => {
-                        foundMessage.style.display = "none";
-                    }, 5000);
-                };
-                
-                // When target image is lost
-                anchor.onTargetLost = function() {
-                    scanningMessage.style.display = "block";
-                    foundMessage.style.display = "none";
-                    unmuteBtn.style.display = "none";
-                    video.pause();
-                };
-                
-                // Start AR
-                mindarThree.start()
-                    .then(() => {
-                        loading.style.display = "none";
-                        scanningMessage.style.display = "block";
-                    })
-                    .catch((err) => {
-                        console.error("AR start error:", err);
-                        loading.style.display = "none";
-                        
-                        // Determine if it's a permissions issue
-                        if (err.name === 'NotAllowedError') {
-                            showError("Camera access denied. Please allow camera access and try again.");
-                        } else {
-                            showError("Camera not available. Please try again or use a different device.");
-                        }
-                    });
-                
-                // Handle window resize
-                window.addEventListener("resize", function() {
-                    renderer.setSize(window.innerWidth, window.innerHeight);
-                    camera.aspect = window.innerWidth / window.innerHeight;
-                    camera.updateProjectionMatrix();
-                });
-                
-            } catch (err) {
-                console.error("AR initialization error:", err);
-                loading.style.display = "none";
-                showError("Something went wrong. Please try again or use a different browser.");
+        // Check if MindAR is available
+        function checkLibraries() {
+            if (typeof window.MindARThree === 'undefined' && typeof window.MINDAR === 'undefined') {
+                showError("AR libraries not loaded correctly. Please check your internet connection and try again.");
+                return false;
             }
+            return true;
+        }
+        
+        // Start AR when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a short delay to ensure libraries are loaded
+            setTimeout(() => {
+                try {
+                    if (!checkLibraries()) return;
+                    
+                    // Use the correct namespace based on what's available
+                    const MindARConstructor = window.MindARThree || (window.MINDAR && window.MINDAR.IMAGE);
+                    
+                    if (!MindARConstructor) {
+                        throw new Error("MindAR library not found");
+                    }
+                    
+                    // Create AR experience with MindAR
+                    const mindarThree = new MindARConstructor({
+                        container: document.querySelector("#ar-container"),
+                        imageTargetSrc: "target.mind", // Your trained image target file
+                        uiScanning: false, // Using custom UI
+                        uiLoading: false,  // Using custom loading UI
+                        maxTrack: 1
+                    });
+                    
+                    const {renderer, scene, camera} = mindarThree;
+                    
+                    // Create a video element
+                    const video = document.createElement("video");
+                    video.src = "your-video.mp4"; // Replace with your actual video file
+                    video.muted = true; // Start muted for autoplay policy
+                    video.preload = "auto";
+                    video.playsInline = true; // Essential for iOS
+                    video.loop = true; // Loop the video playback
+                    video.load();
+                    
+                    // Create video texture
+                    const texture = new THREE.VideoTexture(video);
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+                    
+                    // Create plane for video
+                    const geometry = new THREE.PlaneGeometry(1, 1); // Default 1:1 ratio
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture,
+                        transparent: true
+                    });
+                    const plane = new THREE.Mesh(geometry, material);
+                    
+                    // Add plane to anchor
+                    const anchor = mindarThree.addAnchor(0);
+                    anchor.group.add(plane);
+                    
+                    // When video metadata loads, adjust to correct aspect ratio
+                    video.addEventListener('loadedmetadata', function() {
+                        const aspectRatio = video.videoHeight / video.videoWidth;
+                        plane.geometry = new THREE.PlaneGeometry(1, aspectRatio);
+                    });
+                    
+                    // When the target image is found
+                    anchor.onTargetFound = function() {
+                        scanningMessage.style.display = "none";
+                        foundMessage.style.display = "block";
+                        
+                        // Try to play video
+                        video.play().catch(function(e) {
+                            console.error("Video autoplay error:", e);
+                            // Try with muted for autoplay policy
+                            video.muted = true;
+                            video.play().then(function() {
+                                // Show unmute button
+                                unmuteBtn.style.display = "block";
+                                
+                                unmuteBtn.onclick = function() {
+                                    video.muted = false;
+                                    this.style.display = "none";
+                                };
+                            }).catch(function(err) {
+                                showError("Cannot play video. Please try again.");
+                            });
+                        });
+                        
+                        // Hide success message after a few seconds
+                        setTimeout(() => {
+                            foundMessage.style.display = "none";
+                        }, 5000);
+                    };
+                    
+                    // When target image is lost
+                    anchor.onTargetLost = function() {
+                        scanningMessage.style.display = "block";
+                        foundMessage.style.display = "none";
+                        unmuteBtn.style.display = "none";
+                        video.pause();
+                    };
+                    
+                    // Start AR
+                    mindarThree.start()
+                        .then(() => {
+                            loading.style.display = "none";
+                            scanningMessage.style.display = "block";
+                        })
+                        .catch((err) => {
+                            console.error("AR start error:", err);
+                            loading.style.display = "none";
+                            
+                            // Determine if it's a permissions issue
+                            if (err.name === 'NotAllowedError') {
+                                showError("Camera access denied. Please allow camera access and try again.");
+                            } else {
+                                showError("Camera not available. Please try again or use a different device.");
+                            }
+                        });
+                    
+                    // Handle window resize
+                    window.addEventListener("resize", function() {
+                        renderer.setSize(window.innerWidth, window.innerHeight);
+                        camera.aspect = window.innerWidth / window.innerHeight;
+                        camera.updateProjectionMatrix();
+                    });
+                    
+                } catch (err) {
+                    console.error("AR initialization error:", err);
+                    loading.style.display = "none";
+                    showError("Something went wrong. Please try again or use a different browser.");
+                }
+            }, 500); // Added delay to ensure libraries are loaded
         });
     </script>
 </body>
